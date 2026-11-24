@@ -1,0 +1,33 @@
+name: Sync pickle-room to meeting room
+
+on:
+  push:
+    paths:
+      - chat.md
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pickle-room-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync new chat entries to meeting room
+        env:
+          ROOM_KEY: ${{ secrets.ROOM_KEY }}
+        run: python3 scripts/sync.py
+      - name: Commit synced state
+        run: |
+          git config user.name "pickle-room-sync"
+          git config user.email "pickle-room-sync@users.noreply.github.com"
+          git add synced.json
+          git diff --cached --quiet || git commit -m "Sync chat to meeting room [skip ci]"
+          git push
